@@ -1,1 +1,5 @@
 
+## To confirm whether the microbiome of the Potato plants were even before any treatment was applied, we conducted standard alpha and beta-diversity analysis. Alpha diversity was platted as Shannon index or Observed ASV.
+# An Anova-model was used to compare between the two to be treated groups e.g. "control" and " P.oligandrum". There was no significant difference between the two treatments groups in terms of Observed ASV or Shannon-index. 
+#We also compared the Beta-diversity of the plants in the two to be treated groups e.g. "Control" and "P.oligandrum" plants. The Permanova model was used and no significant difference between the two groups was observed. 
+# Therefor we can confirm that the microbiome of the two to be treated groups were similar before any treatment was applied. 
