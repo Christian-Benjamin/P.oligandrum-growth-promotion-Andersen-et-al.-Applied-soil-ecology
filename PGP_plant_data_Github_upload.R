@@ -15,7 +15,7 @@ library(dplyr)
 library(rstatix)
 library(ggplot2)
 library(ggsignif)
-
+library(agricolae)
 
 # Genotype cv. Kuras 
 
