@@ -1,0 +1,111 @@
+##__________________________ Final 2019 ITS, Data analysis fungal data ##_________________________##
+
+Path_2019_ITS_Final <-"C:/Users/Aron/Desktop/Microbiome_2021/PrimerClipped/ITS/2019_ITS_FInal"
+fnFs <- sort(list.files(Path_2019_ITS_Final, pattern="_R1.fastq.bz2", full.names = TRUE))
+fnRs <- sort(list.files(Path_2019_ITS_Final, pattern="_R2.fastq.bz2", full.names = TRUE))
+fnFs
+
+sample.names <- sapply(strsplit(basename(fnFs), ".fastq.bz2"), `[`, 1)
+sample.names
+
+
+filtFs <- file.path(Path_2019_ITS_Final, "filtered", paste0(sample.names, "_R1_filt.fastq.bz2"))
+filtRs <- file.path(Path_2019_ITS_Final, "filtered", paste0(sample.names, "_R2_filt.fastq.bz2"))
+names(filtFs) <- sample.names
+names(filtRs) <- sample.names
+
+out_2019_ITS_Final <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, maxN = 0, maxEE = c(2, 2), 
+                               truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = FALSE)  # on windows, set multithread = FALSE
+head(out_2019_ITS_Final)
+
+write.csv(out_2019_ITS_Final, file="out_2019_ITS_Final.csv")
+
+
+## Performed on the "Even" server 
+
+path_2019_ITS_Fungi <- "/data/home/christian.andersen/ITS_LGC_CBA/PC_2019_ITS_PGP/"
+path_2019_ITS_Fungi
+list.files(path_2019_ITS_Fungi)
+
+
+fnFs_2019_ITS_Fungi <- sort(list.files(path_2019_ITS_Fungi, pattern="_R1.fastq.bz2", full.names = TRUE))
+fnRs_2019_ITS_Fungi <- sort(list.files(path_2019_ITS_Fungi, pattern="_R2.fastq.bz2", full.names = TRUE))
+fnFs_2019_ITS_Fungi
+
+sample.names <- sapply(strsplit(basename(fnFs_2019_ITS_Fungi), ".fastq.bz2"), `[`, 1)
+sample.names
+
+
+filtFs_2019_ITS_Fungi <- file.path(path_2019_ITS_Fungi, "filtered", paste0(sample.names, "_R1_filt.fastq.bz2"))
+filtRs_2019_ITS_Fungi <- file.path(path_2019_ITS_Fungi, "filtered", paste0(sample.names, "_R2_filt.fastq.bz2"))
+names(filtFs_2019_ITS_Fungi) <- sample.names
+names(filtRs_2019_ITS_Fungi) <- sample.names
+
+
+# learn the error rates of the reads# 
+errF_2019_ITS_Fungi <- learnErrors(filtFs_2019_ITS_Fungi, multithread=TRUE)
+errR_2019_ITS_Fungi <- learnErrors(filtRs_2019_ITS_Fungi, multithread=TRUE)
+
+
+derepFs_2019_ITS_Fungi <- derepFastq(filtFs_2019_ITS_Fungi, verbose = TRUE)
+derepRs_2019_ITS_Fungi <- derepFastq(filtRs_2019_ITS_Fungi, verbose = TRUE)
+# Name the derep-class objects by the sample names
+names(derepFs_2019_ITS_Fungi) <- sample.names
+names(derepRs_2019_ITS_Fungi) <- sample.names
+
+
+
+# now we are ready for the core algorhims of the dada2 pipeline, 
+dadaFs_2019_ITS_Fungi<- dada(filtFs_2019_ITS_Fungi, err=errF_2019_ITS_Fungi, multithread=TRUE)
+dadaRs_2019_ITS_Fungi <- dada(filtRs_2019_ITS_Fungi, err=errR_2019_ITS_Fungi, multithread=TRUE)
+
+mergers_2019_ITS_Fungi <- mergePairs(dadaFs_2019_ITS_Fungi, derepFs_2019_ITS_Fungi, dadaRs_2019_ITS_Fungi, derepRs_2019_ITS_Fungi, verbose=TRUE)
+
+
+head(mergers_2019_ITS_Fungi[[1]])
+
+seqtab_2019_ITS_Fungi <- makeSequenceTable(mergers_2019_ITS_Fungi)
+dim(seqtab_2019_ITS_Fungi)
+
+table(nchar(getSequences(seqtab_2019_ITS_Fungi)))
+
+
+seqtab.nochim_2019_ITS_Fungi <- removeBimeraDenovo(seqtab_2019_ITS_Fungi, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim_2019_ITS_Fungi)
+
+sum(seqtab.nochim_2019_ITS_Fungi)/sum(seqtab_2019_ITS_Fungi)
+
+## read out file## 
+
+
+out_2019_ITS_Fungi <- read.csv("/data/home/christian.andersen/ITS_LGC_CBA/PC_2019_ITS_PGP/out/out_2019_ITS_Final.csv", row=1)
+out_2019_ITS_Fungi
+
+getNout_2019_ITS_Fungi <- function(x) sum(getUniques(x))
+trackout_2019_ITS_Fungi <- cbind(out_2019_ITS_Fungi, sapply(dadaFs_2019_ITS_Fungi, getNout_2019_ITS_Fungi), sapply(dadaRs_2019_ITS_Fungi, getNout_2019_ITS_Fungi), sapply(mergers_2019_ITS_Fungi, getNout_2019_ITS_Fungi), rowSums(seqtab.nochim_2019_ITS_Fungi))
+# If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
+colnames(trackout_2019_ITS_Fungi) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
+rownames(trackout_2019_ITS_Fungi) <- sample.names
+head(trackout_2019_ITS_Fungi)
+
+taxa_2019_ITS_Fungi <- assignTaxonomy(seqtab.nochim_2019_ITS_Fungi, "/data/home/christian.andersen/sh_general_release_dynamic_all_18.07.2023.fasta")
+otu_2019_ITS_Fungi <- t(seqtab.nochim_2019_ITS_Fungi)
+write.csv(otu_2019_ITS_Fungi, file="otu_2019_ITS_Fungi.csv")
+write.csv(taxa_2019_ITS_Fungi, file="taxa_2019_ITS_Fungi.csv")
+
+# Hands off to phyloseq 
+
+otu_2019_Fungi<- as.matrix(read.csv("C:/Users/Aron/Desktop/Microbiome_2021/PrimerClipped/PC_2019/Fungi 2019 ITS/otu_2019_ITS_Fungi.csv", row = 1))
+taxa_2019_Fungi<- as.matrix(read.csv("C:/Users/Aron/Desktop/Microbiome_2021/PrimerClipped/PC_2019/Fungi 2019 ITS/taxa_2019_ITS_Fungi.csv", row = 1))
+meta_2019_Fungi <- read.csv("C:/Users/Aron/Desktop/Microbiome_2021/PrimerClipped/PC_2019/Fungi 2019 ITS/Meta_2019_final.csv", row = 1)
+
+SAM = sample_data(meta_2019_Fungi, errorIfNULL = T)
+OTU = otu_table(otu_2019_Fungi, taxa_are_rows = TRUE)
+TAX = tax_table(taxa_2019_Fungi)
+
+Physeq_LGC_2019_Fungi = phyloseq(OTU, TAX, SAM)
+
+Physeq_LGC_2019_Fungi
+
+saveRDS(Physeq_LGC_2019_Fungi, file="Physeq_LGC_2019_Fungi.rds"
+
